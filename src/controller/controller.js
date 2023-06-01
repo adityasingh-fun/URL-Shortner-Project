@@ -3,17 +3,17 @@ const shortId = require('shortid')
 const urlModel = require('../model/urlModel')
 
 
-const createShortUrl = async function(req, res){
+const createShortUrl = async function (req, res) {
     try {
         let data = req.body
         let longUrl = data.longUrl
         //======long URL validation=====
-        
-        if(!longUrl || longUrl == ""){
-            res.status(400).send({ status:false, msg:"Long Url is required and Long Url cannot be empty"})
+
+        if (!longUrl || longUrl == "") {
+            res.status(400).send({ status: false, msg: "Long Url is required and Long Url cannot be empty" })
         }
-        if(typeof longUrl != "string"){
-            res.status(400).send({status:false, msg:"Long Url's type should be string only"})
+        if (typeof longUrl != "string") {
+            res.status(400).send({ status: false, msg: "Long Url's type should be string only" })
         }
         if (!checkValidUrl.isWebUri(longUrl.trim())) {
             return res.status(400).send({ status: false, message: "Please Enter a valid URL." });
@@ -40,5 +40,19 @@ const createShortUrl = async function(req, res){
     }
 }
 
-
-module.exports.createShortUrl =createShortUrl
+const getURL = async function (req, res) {
+    try {
+        const urlCode = req.params.urlCode;
+        
+        const getData = await urlModel.findOne({ urlCode: urlCode }).select({ _id: 0, longUrl: 1 });
+        if (!getData) {
+            res.status(400).send({ status: false, msg: "invalid urlcode" });
+            return;
+        }
+        res.status(303).send({ status: true, msg: "redirecting to original URL", data: getData.longUrl });
+    } catch (error) {
+        res.status(500).send({ status: false, msg: error });
+    }
+}
+module.exports.createShortUrl = createShortUrl
+module.exports.getURL = getURL;

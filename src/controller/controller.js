@@ -6,7 +6,9 @@ const urlModel = require('../model/urlModel')
 const createShortUrl = async function (req, res) {
     try {
         let data = req.body
+        console.log(data)
         let longUrl = data.longUrl
+        console.log(longUrl)
         //======long URL validation=====
 
         if (!longUrl || longUrl == "") {
@@ -44,14 +46,14 @@ const getURL = async function (req, res) {
     try {
         const urlCode = req.params.urlCode;
         
-        const getData = await urlModel.findOne({ urlCode: urlCode }).select({ _id: 0, longUrl: 1 });
+        const getData = await urlModel.findOne({ urlCode: urlCode });
         if (!getData) {
             res.status(400).send({ status: false, msg: "invalid urlcode" });
             return;
         }
-        res.status(302).send({ status: true, msg: "redirecting to original URL", data: getData.longUrl });
+        res.status(302).redirect(getData.longUrl);
     } catch (error) {
-        res.status(500).send({ status: false, msg: error });
+        res.status(500).send({ status: false, msg: error.message });
     }
 }
 module.exports.createShortUrl = createShortUrl

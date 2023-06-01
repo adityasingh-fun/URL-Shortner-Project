@@ -1,0 +1,29 @@
+{
+  "name": "url-shortner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start":"nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sanket-Munishwar/URL-Shortner.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sanket-Munishwar/URL-Shortner/issues"
+  },
+  "homepage": "https://github.com/Sanket-Munishwar/URL-Shortner#readme",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "express": "^4.18.2",
+    "mongoose": "^7.2.2",
+    "nodemon": "^2.0.22",
+    "shortid": "^2.2.16",
+    "util": "^0.12.5",
+    "valid-url": "^1.0.9"
+  }
+}

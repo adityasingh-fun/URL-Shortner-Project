@@ -49,7 +49,7 @@ const getURL = async function (req, res) {
             res.status(400).send({ status: false, msg: "invalid urlcode" });
             return;
         }
-        res.status(303).send({ status: true, msg: "redirecting to original URL", data: getData.longUrl });
+        res.status(302).send({ status: true, msg: "redirecting to original URL", data: getData.longUrl });
     } catch (error) {
         res.status(500).send({ status: false, msg: error });
     }

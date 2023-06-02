@@ -14,7 +14,17 @@ mongoose.connect('mongodb+srv://sanketmunishwar7:q5WEY4lK4vMAzwbJ@cluster0.0jenl
 .then(()=> console.log("DB connected"))
 .catch((err)=>console.log(err))
 
+app.use((err,req,res,next)=>{
+    if(err){
+        return res.status(400).send({status:false,messsage:"Please provide valid JSON"})
+    }
+    else{
+        next()
+    }
+});
+
 app.use('/',route)
+
 
 
 app.listen(3000, function(){

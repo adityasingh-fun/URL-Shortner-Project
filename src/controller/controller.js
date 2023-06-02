@@ -1,6 +1,29 @@
-const checkValidUrl = require('valid-url')
-const shortId = require('shortid')
-const urlModel = require('../model/urlModel')
+const checkValidUrl = require('valid-url');
+const shortId = require('shortid');
+const urlModel = require('../model/urlModel');
+const axios = require('axios');
+
+const redis = require('redis');
+const {promisify} = require('util');
+
+const redisClient = redis.createClient(
+    13190,
+    "redis-13190.c301.ap-south-1-1.ec2.cloud.redislabs.com",
+    { no_ready_check: true }
+  );
+  redisClient.auth("gkiOIPkytPI3ADi14jHMSWkZEo2J5TDG", function (err) {
+    if (err) throw err;
+  });
+  
+  redisClient.on("connect", async function () {
+    console.log("Connected to Redis..");
+  });
+
+
+
+  const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+  const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
+
 
 
 const createShortUrl = async function (req, res) {
@@ -12,6 +35,9 @@ const createShortUrl = async function (req, res) {
 
         if (!longUrl || longUrl == "") {
             return res.status(400).send({ status: false, msg: "Long Url is required and Long Url cannot be empty" })
+        }
+        if(Object.keys(data).length !== 1){
+            return res.status(400).send({status:false,message:"Enter only long URL"})
         }
         if (typeof longUrl != "string") {
             return res.status(400).send({ status: false, msg: "Long Url's type should be string only" })
@@ -32,6 +58,8 @@ const createShortUrl = async function (req, res) {
         let shortUrl = "http://127.0.0.1:3000/" + uniqueUrlCode;
         data.shortUrl = shortUrl.toLowerCase();
 
+        await SET_ASYNC(`${urlCode}`,JSON.stringify(getData));
+
         //====here we are creating tha data=====
         const createUrlData = await urlModel.create(data);
         const finalResult = await urlModel.findById(createUrlData._id).select({ longUrl: 1, shortUrl: 1, urlCode: 1, _id: 0 });
@@ -44,13 +72,27 @@ const createShortUrl = async function (req, res) {
 const getURL = async function (req, res) {
     try {
         const urlCode = req.params.urlCode;
-        
-        const getData = await urlModel.findOne({ urlCode: urlCode });
-        if (!getData) {
-            res.status(400).send({ status: false, msg: "invalid urlcode" });
-            return;
+
+        redisClient.expire(urlCode,60)
+        let cachedData = await GET_ASYNC(`${req.params.urlCode}`);
+
+        if(cachedData){
+            // JSONObject jsonObject = new JSONObject(cachedData)
+            var obj = JSON.parse(cachedData)
+            console.log(obj)
+
+            return res.status(302).redirect(obj.longUrl)
         }
-        res.status(302).redirect(getData.longUrl);
+        else{
+            let getData = await urlModel.findOne({urlCode:urlCode})
+            if(!getData){
+                return res.status(404).send({status:false,message:"Invalid URL code"})
+            }
+            await SET_ASYNC(`${urlCode}`,JSON.stringify(getData));
+            res.status(302).redirect(getData.longUrl)
+        }
+        
+    
     } catch (error) {
         res.status(500).send({ status: false, msg: error.message });
     }

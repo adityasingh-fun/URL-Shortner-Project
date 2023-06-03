@@ -56,12 +56,14 @@ const createShortUrl = async function (req, res) {
         let uniqueUrlCode = shortId.generate();
         data.urlCode = uniqueUrlCode;
         let shortUrl = "http://127.0.0.1:3000/" + uniqueUrlCode;
-        data.shortUrl = shortUrl.toLowerCase();
-
-        await SET_ASYNC(`${urlCode}`,JSON.stringify(getData));
+        data.shortUrl = shortUrl.toLowerCase(); 
 
         //====here we are creating tha data=====
         const createUrlData = await urlModel.create(data);
+
+        //===setting the data in the redis during creation of data===
+        await SET_ASYNC(`${data.urlCode}`,JSON.stringify(createUrlData)); 
+
         const finalResult = await urlModel.findById(createUrlData._id).select({ longUrl: 1, shortUrl: 1, urlCode: 1, _id: 0 });
         res.status(201).send({ status: true, data: finalResult });
     } catch (error) {
@@ -73,7 +75,7 @@ const getURL = async function (req, res) {
     try {
         const urlCode = req.params.urlCode;
 
-        redisClient.expire(urlCode,60)
+        redisClient.expire(urlCode,86400)
         let cachedData = await GET_ASYNC(`${req.params.urlCode}`);
 
         if(cachedData){

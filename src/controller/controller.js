@@ -20,8 +20,7 @@ redisClient.on("connect", async function () {
 });
 
 
-
-const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+const SET_ASYNC = promisify(redisClient.SETEX).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 
@@ -77,8 +76,8 @@ const createShortUrl = async function (req, res) {
         console.log(data)
 
         //===setting the data in the redis during creation of data===
-        await SET_ASYNC(`${longUrl}`, JSON.stringify(data));
-        await SET_ASYNC(`${data.urlCode}`, data.longUrl);
+        await SET_ASYNC(`${longUrl}`,86400, JSON.stringify(data));
+        await SET_ASYNC(`${data.urlCode}`,86400, data.longUrl);
 
 
         //====here we are creating tha data=====

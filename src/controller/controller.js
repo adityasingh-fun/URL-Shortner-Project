@@ -81,7 +81,7 @@ const getURL = async function (req, res) {
         if(cachedData){
             // JSONObject jsonObject = new JSONObject(cachedData)
             var obj = JSON.parse(cachedData)
-            console.log(obj)
+            // console.log(obj)
 
             return res.status(302).redirect(obj.longUrl)
         }

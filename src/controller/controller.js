@@ -26,66 +26,70 @@ const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 
 const createShortUrl = async function (req, res) {
-    try {
-        let data = req.body;
-        let longUrl = req.body.longUrl
+    let data = req.body;
+    let longUrl = req.body.longUrl;
+    if (longUrl) {
+        try {
+            //======long URL validation=====
 
-        //======long URL validation=====
+            if (longUrl == "") {
+                return res.status(400).send({ status: false, msg: "Long Url is required and Long Url cannot be empty" })
+            }
+            if (Object.keys(data).length !== 1) {
+                return res.status(400).send({ status: false, message: "Enter only long URL" })
+            }
+            if (typeof longUrl != "string") {
+                return res.status(400).send({ status: false, msg: "Long Url's type should be string only" })
+            }
+            if (!checkValidUrl.isWebUri(longUrl.trim())) {
+                return res.status(400).send({ status: false, message: "Please Enter a valid URL." });
+            }
 
-        if (!longUrl || longUrl == "") {
-            return res.status(400).send({ status: false, msg: "Long Url is required and Long Url cannot be empty" })
+            let checkUrl = await axios.get(longUrl)
+                .then(() => longUrl)
+                .catch(() => null)
+            // console.log(checkUrl)
+
+            if (!checkUrl) {
+                return res.status(400).send({ status: false, message: "The URL you are providing is invalid URL" })
+            }
+
+            // Now we will check if this long url is already created and present in redis(cache)
+            let cachedData = await GET_ASYNC(`${longUrl}`);
+            if (cachedData) {
+                console.log("comin from cache")
+                return res.status(403).send({ status: false, message: "Short URL already generated for this URL" });
+            }
+
+            //=====check if long URL exists and show its details======
+            const findUrlDetails = await urlModel.findOne({ longUrl: longUrl }).select({ longUrl: 1, shortUrl: 1, urlCode: 1, _id: 0 });
+            if (findUrlDetails) {
+                return res.status(403).send({ status: true, message: "URL code for this URL is already generated", data: findUrlDetails });
+            }
+
+            //====if long url is unique then generate URL code and short URL=====
+            let uniqueUrlCode = shortId.generate();
+            data.urlCode = uniqueUrlCode;
+            let shortUrl = "http://localhost:3000/" + uniqueUrlCode;
+            data.shortUrl = shortUrl.toLowerCase();
+
+            console.log(data)
+
+            //===setting the data in the redis during creation of data===
+            await SET_ASYNC(`${longUrl}`, 86400, JSON.stringify(data));
+            await SET_ASYNC(`${data.urlCode}`, 86400, data.longUrl);
+
+
+            //====here we are creating tha data=====
+            const createUrlData = await urlModel.create(data);
+
+            res.status(201).send({ status: true, data: data });
+        } catch (error) {
+            return res.status(500).send({ status: false, message: error.message });
         }
-        if (Object.keys(data).length !== 1) {
-            return res.status(400).send({ status: false, message: "Enter only long URL" })
-        }
-        if (typeof longUrl != "string") {
-            return res.status(400).send({ status: false, msg: "Long Url's type should be string only" })
-        }
-        if (!checkValidUrl.isWebUri(longUrl.trim())) {
-            return res.status(400).send({ status: false, message: "Please Enter a valid URL." });
-        }
-
-        let checkUrl = await axios.get(longUrl)
-            .then(() => longUrl)
-            .catch(() => null)
-        // console.log(checkUrl)
-
-        if (!checkUrl) {
-            return res.status(400).send({ status: false, message: "The URL you are providing is invalid URL" })
-        }
-
-        // Now we will check if this long url is already created and present in redis(cache)
-        let cachedData = await GET_ASYNC(`${longUrl}`);
-        if (cachedData) {
-            console.log("comin from cache")
-            return res.status(403).send({ status: false, message: "Short URL already generated for this URL" });
-        }
-
-        //=====check if long URL exists and show its details======
-        const findUrlDetails = await urlModel.findOne({ longUrl: longUrl }).select({ longUrl: 1, shortUrl: 1, urlCode: 1, _id: 0 });
-        if (findUrlDetails) {
-            return res.status(403).send({ status: true, message: "URL code for this URL is already generated", data: findUrlDetails });
-        }
-
-        //====if long url is unique then generate URL code and short URL=====
-        let uniqueUrlCode = shortId.generate();
-        data.urlCode = uniqueUrlCode;
-        let shortUrl = "http://127.0.0.1:3000/" + uniqueUrlCode;
-        data.shortUrl = shortUrl.toLowerCase();
-
-        console.log(data)
-
-        //===setting the data in the redis during creation of data===
-        await SET_ASYNC(`${longUrl}`,86400, JSON.stringify(data));
-        await SET_ASYNC(`${data.urlCode}`,86400, data.longUrl);
-
-
-        //====here we are creating tha data=====
-        const createUrlData = await urlModel.create(data);
-
-        res.status(201).send({ status: true, data: data });
-    } catch (error) {
-        return res.status(500).send({ status: false, message: error.message });
+    }
+    else {
+        return res.status(400).send({ status: false, message: "Long URL must be present" })
     }
 }
 
@@ -107,7 +111,7 @@ const getURL = async function (req, res) {
         if (!getData) {
             return res.status(404).send({ status: false, message: "Invalid URL code" })
         }
-        // await SET_ASYNC(`${urlCode}`,86400,JSON.stringify(getData));
+        await SET_ASYNC(`${urlCode}`,86400,JSON.stringify(getData.longUrl));
         console.log("coming from DB")
         res.status(302).redirect(getData.longUrl)
 
